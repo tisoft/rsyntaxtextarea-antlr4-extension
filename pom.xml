@@ -130,7 +130,7 @@
         </executions>
         <configuration>
           <updatePomFile>true</updatePomFile>
-          <flattenMode>resolveCiFriendliesOnly</flattenMode>
+          <flattenMode>ossrh</flattenMode>
         </configuration>
       </plugin>
       <plugin>
