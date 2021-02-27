@@ -1,8 +1,6 @@
 name: Java CI with Maven
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -18,4 +16,4 @@ jobs:
       with:
         java-version: 1.8
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: mvn --no-transfer-progress -B verify -Drevision=${GITHUB_REF##*/} --file pom.xml
