@@ -1,0 +1,79 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'biz.aQute.bnd:biz.aQute.bnd.gradle:5.2.0'
+    }
+}
+
+plugins {
+    id 'com.github.spotbugs' version '4.6.0'
+}
+
+group 'com.fifesoft'
+// NOTE: Local Java 8:  /Library/Java/JavaVirtualMachines/jdk1.8.0_25.jdk/Contents/Home
+
+allprojects {
+
+    repositories {
+        mavenCentral()
+        maven {
+            url 'https://oss.sonatype.org/content/repositories/snapshots'
+        }
+    }
+
+    wrapper {
+        gradleVersion = '6.7.1'
+    }
+}
+
+subprojects {
+
+    apply plugin: 'java'
+    apply plugin: 'checkstyle'
+    apply plugin: 'com.github.spotbugs'
+
+    checkstyle {
+        toolVersion = '8.37'
+        configDirectory = file("$rootProject.projectDir/config/checkstyle")
+    }
+
+    spotbugs {
+        // Relative to subprojects
+        includeFilter = file('../config/spotbugs-exclude.xml')
+    }
+
+    spotbugsMain {
+        reports {
+            html {
+                enabled = true
+            }
+            xml {
+                enabled = false
+            }
+        }
+    }
+    spotbugsTest {
+        reports {
+            html {
+                enabled = true
+            }
+            xml {
+                enabled = false
+            }
+        }
+    }
+
+    dependencies {
+        testImplementation 'junit:junit:4.13.1'
+    }
+
+    compileJava {
+        sourceCompatibility javaVersion
+        targetCompatibility javaVersion
+        options.debug = true
+        options.debugOptions.debugLevel = 'source,vars,lines'
+        options.compilerArgs << '-Xlint:deprecation' << '-Xlint:unchecked'
+    }
+}
