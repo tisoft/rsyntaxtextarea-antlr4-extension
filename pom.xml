@@ -153,6 +153,10 @@
                 <include>**/*.java</include>
                 <include>**/*.g4</include>
               </includes>
+              <excludes>
+                <!-- Third party code is licensed on its own.-->
+                <exclude>**/third_party/**</exclude>
+              </excludes>
             </configuration>
           </execution>
         </executions>
@@ -237,6 +241,32 @@
               <sources>
                 <source>${project.build.directory}/generated-test-sources/antlr4</source>
               </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>add-demo-source</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>add-test-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${project.basedir}/third_party/RSyntaxTextArea/RSyntaxTextAreaDemo/src/main/java</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>add-demo-resource</id>
+            <phase>generate-test-resources</phase>
+            <goals>
+              <goal>add-test-resource</goal>
+            </goals>
+            <configuration>
+              <resources>
+                <resource>
+                  <directory>${project.basedir}/third_party/RSyntaxTextArea/RSyntaxTextAreaDemo/src/main/resources</directory>
+                </resource>
+              </resources>
             </configuration>
           </execution>
         </executions>
