@@ -29,7 +29,7 @@ import third_party.XMLLexer;
 public class XMLTokenMaker extends AntlrTokenMaker {
 
   public XMLTokenMaker() {
-    super(new MultiLineTokenInfo(0, Token.COMMENT_MULTILINE, "<!--", "-->"));
+    super(new MultiLineTokenInfo(0, Token.MARKUP_COMMENT, "<!--", "-->"));
   }
 
   @Override
@@ -46,9 +46,32 @@ public class XMLTokenMaker extends AntlrTokenMaker {
   protected int convertType(int type) {
     switch (type) {
       case XMLLexer.COMMENT:
-        return Token.COMMENT_MULTILINE;
+        return Token.MARKUP_COMMENT;
       case XMLLexer.STRING:
-        return Token.LITERAL_STRING_DOUBLE_QUOTE;
+        return Token.MARKUP_TAG_ATTRIBUTE_VALUE;
+      case XMLLexer.OPEN:
+      case XMLLexer.XMLDeclOpen:
+      case XMLLexer.CLOSE:
+      case XMLLexer.SLASH:
+      case XMLLexer.SLASH_CLOSE:
+      case XMLLexer.SPECIAL_CLOSE:
+        return Token.MARKUP_TAG_DELIMITER;
+      case XMLLexer.Name:
+        return Token.MARKUP_TAG_NAME;
+      case XMLLexer.EQUALS:
+        return Token.OPERATOR;
+      case XMLLexer.CDATA:
+        return Token.MARKUP_CDATA;
+      case XMLLexer.DTD:
+        return Token.MARKUP_DTD;
+      case XMLLexer.PI:
+        return Token.MARKUP_PROCESSING_INSTRUCTION;
+      case XMLLexer.SEA_WS:
+      case XMLLexer.S:
+        return Token.WHITESPACE;
+      case XMLLexer.EntityRef:
+      case XMLLexer.CharRef:
+        return Token.MARKUP_ENTITY_REFERENCE;
     }
     return Token.IDENTIFIER;
   }

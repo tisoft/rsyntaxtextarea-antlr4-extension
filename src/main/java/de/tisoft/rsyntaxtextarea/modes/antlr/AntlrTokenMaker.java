@@ -61,19 +61,23 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
     if (initialMultiLineTokenInfo != null) {
       // we are inside a multi line token, so prefix the text with the token start
       line = multilineTokenStart + line;
+      setLanguageIndex(initialMultiLineTokenInfo.languageIndex);
     }
 
     // check if we have a multi line token start without an end
     String multilineTokenEnd = null;
     for (MultiLineTokenInfo info : multiLineTokenInfos) {
-      int tokenStartPos = line.indexOf(info.tokenStart);
-      if (tokenStartPos > -1
-          && line.indexOf(info.tokenEnd, tokenStartPos + info.tokenStart.length()) == -1) {
-        // we are in the middle of a multi line token, we need to end it so the lexer can recognize
-        // it
-        multilineTokenEnd = info.tokenEnd;
-        line += multilineTokenEnd;
-        break;
+      if (info.languageIndex == getLanguageIndex()) {
+        // the language index matches our current language
+        int tokenStartPos = line.indexOf(info.tokenStart);
+        if (tokenStartPos > -1
+            && line.indexOf(info.tokenEnd, tokenStartPos + info.tokenStart.length()) == -1) {
+          // we are in the middle of a multi line token, we need to end it so the lexer can
+          // recognize it
+          multilineTokenEnd = info.tokenEnd;
+          line += multilineTokenEnd;
+          break;
+        }
       }
     }
 
