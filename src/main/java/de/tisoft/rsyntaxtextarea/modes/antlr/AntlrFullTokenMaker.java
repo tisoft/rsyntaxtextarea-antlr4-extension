@@ -38,6 +38,8 @@ public abstract class AntlrFullTokenMaker extends TokenMakerBase {
         }
       };
 
+  private String lastLexed = "";
+
   protected AntlrFullTokenMaker() {
     super();
   }
@@ -55,10 +57,12 @@ public abstract class AntlrFullTokenMaker extends TokenMakerBase {
   protected abstract int convertType(int type);
 
   public Token getTokenList(Segment text, int initialTokenType, int startOffset) {
-
+    lastLexed =
+        lastLexed.substring(0, startOffset)
+            + new String(text.array, text.offset, text.array.length - text.offset)+"\n";
     Token cachedToken =
         lexerCache.computeIfAbsent(
-            new String(text.array),
+            lastLexed,
             s ->
                 new InternalFullTokenMaker(AntlrFullTokenMaker.this)
                     .getTokenList(
@@ -106,6 +110,17 @@ public abstract class AntlrFullTokenMaker extends TokenMakerBase {
     return firstToken;
   }
 
+  private int lastTokenCounter = -1;
+
+  @Override
+  public int getLastTokenTypeOnLine(Segment text, int initialTokenType) {
+    if (--lastTokenCounter > 0) {
+      // always negative
+      lastTokenCounter = -1;
+    }
+    return lastTokenCounter;
+  }
+
   protected abstract Lexer createLexer(String text);
 
   private static class InternalFullTokenMaker extends TokenMakerBase {
@@ -144,21 +159,21 @@ public abstract class AntlrFullTokenMaker extends TokenMakerBase {
             currentDocumentOffset = currentToken.getEndOffset();
           }
         }
-      } catch (AntlrException exceptionInstanceNotNeeded) {
-        // mark the rest of the line as error
-        final String remainingText =
-            String.valueOf(
-                text.array,
-                currentArrayOffset,
-                text.array.length - currentArrayOffset + text.count);
-
+      } catch (AntlrException ignored) {
+        // the Exception is used as control structure here, it breaks the loop on any arror
+        // any remaining un-lexed text is added as a token right afterwards
+      }
+      int remainingTextCount = text.array.length - currentDocumentOffset;
+      if (remainingTextCount > 0) {
+        // mark the rest of the text as error
         addToken(
             text,
             currentArrayOffset,
-            currentArrayOffset + remainingText.length() - 1,
+            currentArrayOffset + remainingTextCount - 1,
             Token.ERROR_IDENTIFIER,
             currentDocumentOffset);
       }
+
       if (firstToken == null) {
         // make sure we always have a token
         addNullToken();
