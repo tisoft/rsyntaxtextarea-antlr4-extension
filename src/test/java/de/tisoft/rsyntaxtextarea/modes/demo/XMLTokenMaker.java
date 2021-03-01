@@ -20,13 +20,13 @@
 
 package de.tisoft.rsyntaxtextarea.modes.demo;
 
-import de.tisoft.rsyntaxtextarea.modes.antlr.AntlrTokenMaker;
+import de.tisoft.rsyntaxtextarea.modes.antlr.AntlrFullTokenMaker;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.Lexer;
 import org.fife.ui.rsyntaxtextarea.Token;
 import third_party.XMLLexer;
 
-public class XMLTokenMaker extends AntlrTokenMaker {
+public class XMLTokenMaker extends AntlrFullTokenMaker {
 
   public XMLTokenMaker() {
     super(new MultiLineTokenInfo(0, Token.MARKUP_COMMENT, "<!--", "-->"));
