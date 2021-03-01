@@ -21,6 +21,7 @@
 package de.tisoft.rsyntaxtextarea.modes;
 
 import de.tisoft.rsyntaxtextarea.modes.antlr.AntlrTokenMaker;
+import de.tisoft.rsyntaxtextarea.modes.antlr.MultiLineTokenInfo;
 import de.tisoft.rsyntaxtextarea.modes.antlr.TestLexer;
 import javax.swing.text.Segment;
 import org.antlr.v4.runtime.CharStreams;

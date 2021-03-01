@@ -214,21 +214,4 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
   }
 
   protected abstract Lexer createLexer(String text);
-
-  protected static class MultiLineTokenInfo {
-    private final int languageIndex;
-
-    private final int token;
-
-    private final String tokenStart;
-
-    private final String tokenEnd;
-
-    public MultiLineTokenInfo(int languageIndex, int token, String tokenStart, String tokenEnd) {
-      this.languageIndex = languageIndex;
-      this.token = token;
-      this.tokenStart = tokenStart;
-      this.tokenEnd = tokenEnd;
-    }
-  }
 }

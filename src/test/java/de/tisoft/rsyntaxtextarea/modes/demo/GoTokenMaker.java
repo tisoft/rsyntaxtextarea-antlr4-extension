@@ -21,6 +21,7 @@
 package de.tisoft.rsyntaxtextarea.modes.demo;
 
 import de.tisoft.rsyntaxtextarea.modes.antlr.AntlrTokenMaker;
+import de.tisoft.rsyntaxtextarea.modes.antlr.MultiLineTokenInfo;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.Lexer;
 import org.fife.ui.rsyntaxtextarea.Token;
