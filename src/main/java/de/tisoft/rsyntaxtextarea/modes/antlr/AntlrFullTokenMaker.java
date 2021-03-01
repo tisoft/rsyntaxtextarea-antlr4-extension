@@ -25,7 +25,6 @@ import java.util.BitSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import javax.swing.text.Segment;
 import org.antlr.v4.runtime.ANTLRErrorListener;
 import org.antlr.v4.runtime.CommonToken;
@@ -72,65 +71,18 @@ public abstract class AntlrFullTokenMaker extends TokenMakerBase {
     Token cachedToken =
         lexerCache.computeIfAbsent(
             new String(text.array),
-            new Function<String, Token>() {
-              @Override
-              public Token apply(String s) {
-                resetTokenList();
-                Lexer lexer = createLexer(new String(text.array));
-                lexer.removeErrorListeners();
-                lexer.addErrorListener(new AlwaysThrowingErrorListener());
-
-                int currentArrayOffset = text.getBeginIndex();
-                int currentDocumentOffset = startOffset;
-
-                try {
-                  while (true) {
-                    org.antlr.v4.runtime.Token at = lexer.nextToken();
-                    if (at.getType() == CommonToken.EOF) {
-                      addNullToken();
-                      break;
-                    } else {
-                      addToken(
-                          text,
-                          currentArrayOffset,
-                          at.getStopIndex(),
-                          getClosestStandardTokenTypeForInternalType(at.getType()),
-                          currentDocumentOffset);
-
-                      // update from current token
-                      currentArrayOffset = currentToken.textOffset + currentToken.textCount;
-                      currentDocumentOffset = currentToken.getEndOffset();
-                    }
-                  }
-                } catch (AntlrException exceptionInstanceNotNeeded) {
-                  // mark the rest of the line as error
-                  final String remainingText =
-                      String.valueOf(
-                          text.array,
-                          currentArrayOffset,
-                          text.offset - currentArrayOffset + text.count);
-                  int type;
-
-                  type = Token.ERROR_IDENTIFIER;
-
-                  addToken(
-                      text,
-                      currentArrayOffset,
-                      currentArrayOffset + remainingText.length() - 1,
-                      type,
-                      currentDocumentOffset);
-                }
-                if (firstToken == null) {
-                  // make sure we always have a token
-                  addNullToken();
-                }
-
-                return firstToken;
-              }
-            });
+            s ->
+                new InternalFullTokenMaker(AntlrFullTokenMaker.this)
+                    .getTokenList(
+                        new Segment(text.array, 0, text.array.length),
+                        initialTokenType,
+                        startOffset));
 
     // extract the real start token for the current line
-    firstToken = currentToken = previousToken = null;
+    resetTokenList();
+
+    int currentArrayOffset = text.getBeginIndex();
+    int currentDocumentOffset = startOffset;
 
     Token t = cachedToken;
     do {
@@ -147,17 +99,87 @@ public abstract class AntlrFullTokenMaker extends TokenMakerBase {
           // the token ends after this segment, limit it to segment end
           endOffset = text.getEndIndex();
         }
-        addToken(text, offset, endOffset-1, t.getType(), offset);
+        addToken(
+            text,
+            currentArrayOffset,
+            currentArrayOffset + endOffset - offset - 1,
+            t.getType(),
+            currentDocumentOffset);
+
+        // update from current token
+        currentArrayOffset = currentToken.textOffset + currentToken.textCount;
+        currentDocumentOffset = currentToken.getEndOffset();
       }
     } while ((t = t.getNextToken()) != null);
 
-       // line end
-      addNullToken();
+    // line end
+    addNullToken();
 
     return firstToken;
   }
 
   protected abstract Lexer createLexer(String text);
+
+  private static class InternalFullTokenMaker extends TokenMakerBase {
+    private final AntlrFullTokenMaker antlrFullTokenMaker;
+
+    public InternalFullTokenMaker(AntlrFullTokenMaker antlrFullTokenMaker) {
+      this.antlrFullTokenMaker = antlrFullTokenMaker;
+    }
+
+    @Override
+    public Token getTokenList(Segment text, int initialTokenType, int startOffset) {
+      resetTokenList();
+      Lexer lexer = antlrFullTokenMaker.createLexer(new String(text.array));
+      lexer.removeErrorListeners();
+      lexer.addErrorListener(new AlwaysThrowingErrorListener());
+
+      int currentArrayOffset = text.getBeginIndex();
+      int currentDocumentOffset = startOffset;
+
+      try {
+        while (true) {
+          org.antlr.v4.runtime.Token at = lexer.nextToken();
+          if (at.getType() == CommonToken.EOF) {
+            addNullToken();
+            break;
+          } else {
+            addToken(
+                text,
+                currentArrayOffset,
+                at.getStopIndex(),
+                getClosestStandardTokenTypeForInternalType(at.getType()),
+                currentDocumentOffset);
+
+            // update from current token
+            currentArrayOffset = currentToken.textOffset + currentToken.textCount;
+            currentDocumentOffset = currentToken.getEndOffset();
+          }
+        }
+      } catch (AntlrException exceptionInstanceNotNeeded) {
+        // mark the rest of the line as error
+        final String remainingText =
+            String.valueOf(
+                text.array, currentArrayOffset, text.offset - currentArrayOffset + text.count);
+        int type;
+
+        type = Token.ERROR_IDENTIFIER;
+
+        addToken(
+            text,
+            currentArrayOffset,
+            currentArrayOffset + remainingText.length() - 1,
+            type,
+            currentDocumentOffset);
+      }
+      if (firstToken == null) {
+        // make sure we always have a token
+        addNullToken();
+      }
+
+      return firstToken;
+    }
+  }
 
   protected static class MultiLineTokenInfo {
     private final int languageIndex;
