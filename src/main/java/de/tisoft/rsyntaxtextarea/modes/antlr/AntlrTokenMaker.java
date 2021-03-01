@@ -22,6 +22,7 @@ package de.tisoft.rsyntaxtextarea.modes.antlr;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import javax.swing.text.Segment;
 import org.antlr.v4.runtime.CommonToken;
 import org.antlr.v4.runtime.Lexer;
@@ -62,7 +63,7 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
     // we need to set it, so that the correct multiline token can be found
     setLanguageIndex(modeInfo.currentMode);
 
-    String multilineTokenStart = getTokenStart(modeInfo);
+    String multilineTokenStart = getMultilineTokenStart(modeInfo);
     if (multilineTokenStart != null) {
       // we are inside a multi line token, so prefix the text with the token start
       line = multilineTokenStart + line;
@@ -181,36 +182,31 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
     return end;
   }
 
-  private String getTokenStart(ModeInfoManager.ModeInfo modeInfo) {
-    MultiLineTokenInfo initialMultiLineTokenInfo =
-        getMultiLineTokenInfo(getLanguageIndex(), modeInfo.tokenType);
-    return initialMultiLineTokenInfo == null ? null : initialMultiLineTokenInfo.tokenStart;
+  private String getMultilineTokenStart(ModeInfoManager.ModeInfo modeInfo) {
+    return getMultiLineTokenInfo(getLanguageIndex(), modeInfo.tokenType)
+        .map(i -> i.tokenStart)
+        .orElse(null);
   }
 
   private String getMultilineTokenEnd(String line) {
-    String multilineTokenEnd = null;
-    for (MultiLineTokenInfo info : multiLineTokenInfos) {
-      if (info.languageIndex == getLanguageIndex()) {
+    return multiLineTokenInfos.stream()
         // the language index matches our current language
-        int tokenStartPos = line.indexOf(info.tokenStart);
-        if (tokenStartPos > -1
-            && line.indexOf(info.tokenEnd, tokenStartPos + info.tokenStart.length()) == -1) {
-          // we are in the middle of a multi line token, we need to end it so the lexer can
-          // recognize it
-          multilineTokenEnd = info.tokenEnd;
-          break;
-        }
-      }
-    }
-    return multilineTokenEnd;
+        .filter(i -> i.languageIndex == getLanguageIndex())
+        // the line contains the token start
+        .filter(i -> line.contains(i.tokenStart))
+        // the line doesn't contain the token end after the token start
+        .filter(
+            i -> line.indexOf(i.tokenEnd, line.indexOf(i.tokenStart) + i.tokenStart.length()) == -1)
+        .map(i -> i.tokenEnd)
+        .findFirst()
+        .orElse(null);
   }
 
-  private MultiLineTokenInfo getMultiLineTokenInfo(int languageIndex, int token) {
+  private Optional<MultiLineTokenInfo> getMultiLineTokenInfo(int languageIndex, int token) {
     return multiLineTokenInfos.stream()
         .filter(i -> i.languageIndex == languageIndex)
         .filter(i -> i.token == token)
-        .findFirst()
-        .orElse(null);
+        .findFirst();
   }
 
   protected abstract Lexer createLexer(String text);
