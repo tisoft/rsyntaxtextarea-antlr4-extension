@@ -27,7 +27,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import javax.swing.text.Segment;
-import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.ANTLRErrorListener;
+import org.antlr.v4.runtime.CommonToken;
+import org.antlr.v4.runtime.Lexer;
+import org.antlr.v4.runtime.Parser;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.atn.ATNConfigSet;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.misc.IntegerStack;
@@ -94,41 +99,20 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
     resetTokenList();
 
     // the modes to push
-    ModeInfo modeInfo;
-    if (initialTokenType < 0) {
-      // extract modes
-      modeInfo = tokenToModeInfo.get(initialTokenType);
-      initialTokenType = modeInfo.tokenType;
-      // we need to set it, so that the correct multiline token can be found
-      setLanguageIndex(modeInfo.modeStack.peek());
-    } else {
-      modeInfo = new ModeInfo(initialTokenType, Lexer.DEFAULT_MODE, new IntegerStack());
-    }
+    ModeInfo modeInfo = getModeInfo(initialTokenType);
+    // we need to set it, so that the correct multiline token can be found
+    setLanguageIndex(modeInfo.currentMode);
 
-    MultiLineTokenInfo initialMultiLineTokenInfo =
-        getMultiLineTokenInfo(getLanguageIndex(), initialTokenType);
-    String multilineTokenStart =
-        initialMultiLineTokenInfo == null ? null : initialMultiLineTokenInfo.tokenStart;
-    if (initialMultiLineTokenInfo != null) {
+    String multilineTokenStart = getTokenStart(modeInfo);
+    if (multilineTokenStart != null) {
       // we are inside a multi line token, so prefix the text with the token start
       line = multilineTokenStart + line;
     }
 
     // check if we have a multi line token start without an end
-    String multilineTokenEnd = null;
-    for (MultiLineTokenInfo info : multiLineTokenInfos) {
-      if (info.languageIndex == getLanguageIndex()) {
-        // the language index matches our current language
-        int tokenStartPos = line.indexOf(info.tokenStart);
-        if (tokenStartPos > -1
-            && line.indexOf(info.tokenEnd, tokenStartPos + info.tokenStart.length()) == -1) {
-          // we are in the middle of a multi line token, we need to end it so the lexer can
-          // recognize it
-          multilineTokenEnd = info.tokenEnd;
-          line += multilineTokenEnd;
-          break;
-        }
-      }
+    String multilineTokenEnd = getMultilineTokenEnd(line);
+    if (multilineTokenEnd != null) {
+      line += multilineTokenEnd;
     }
 
     Lexer lexer = createLexer(line);
@@ -153,23 +137,13 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
           }
           break;
         } else {
-          int end = currentArrayOffset + at.getText().length() - 1;
-          if (initialMultiLineTokenInfo != null
-              && multilineTokenStart != null
-              && at.getText().startsWith(multilineTokenStart)) {
-            // need to subtract our inserted token start
-            end -= multilineTokenStart.length();
-          }
-          if (multilineTokenEnd != null && at.getText().endsWith(multilineTokenEnd)) {
-            // need to subtract our inserted token end
-            end -= multilineTokenEnd.length();
-          }
           addToken(
               text,
               currentArrayOffset,
-              end,
-              getClosestStandardTokenTypeForInternalType(at.getType()),
-              currentDocumentOffset);
+              currentDocumentOffset,
+              multilineTokenStart,
+              multilineTokenEnd,
+              at);
           // update from current token
           currentArrayOffset = currentToken.textOffset + currentToken.textCount;
           currentDocumentOffset = currentToken.getEndOffset();
@@ -180,13 +154,8 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
       final String remainingText =
           String.valueOf(
               text.array, currentArrayOffset, text.offset - currentArrayOffset + text.count);
-      int type;
 
-      if (initialMultiLineTokenInfo != null) {
-        type = initialMultiLineTokenInfo.token;
-      } else {
-        type = Token.ERROR_IDENTIFIER;
-      }
+      int type = multilineTokenStart != null ? modeInfo.tokenType : Token.ERROR_IDENTIFIER;
 
       addToken(
           text,
@@ -195,7 +164,7 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
           type,
           currentDocumentOffset);
 
-      if (initialMultiLineTokenInfo == null) {
+      if (multilineTokenStart == null) {
         // we are not in a multiline token, so we assume the line ends here
         addNullToken();
       }
@@ -208,7 +177,7 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
 
     if (firstToken.getType() == Token.NULL && firstToken == currentToken) {
       // empty line, copy type from last line
-      firstToken.setType(initialTokenType);
+      firstToken.setType(modeInfo.tokenType);
       firstToken.text = new char[0];
       firstToken.textCount = 0;
     }
@@ -218,6 +187,73 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
     }
 
     return firstToken;
+  }
+
+  private void addToken(
+      Segment text,
+      int start,
+      int startOffset,
+      String multilineTokenStart,
+      String multilineTokenEnd,
+      org.antlr.v4.runtime.Token at) {
+    addToken(
+        text,
+        start,
+        calculateTokenEnd(multilineTokenStart, multilineTokenEnd, start, at),
+        getClosestStandardTokenTypeForInternalType(at.getType()),
+        startOffset);
+  }
+
+  private int calculateTokenEnd(
+      String multilineTokenStart,
+      String multilineTokenEnd,
+      int currentArrayOffset,
+      org.antlr.v4.runtime.Token at) {
+    int end = currentArrayOffset + at.getText().length() - 1;
+    if (multilineTokenStart != null && at.getText().startsWith(multilineTokenStart)) {
+      // need to subtract our inserted token start
+      end -= multilineTokenStart.length();
+    }
+    if (multilineTokenEnd != null && at.getText().endsWith(multilineTokenEnd)) {
+      // need to subtract our inserted token end
+      end -= multilineTokenEnd.length();
+    }
+    return end;
+  }
+
+  private String getTokenStart(ModeInfo modeInfo) {
+    MultiLineTokenInfo initialMultiLineTokenInfo =
+        getMultiLineTokenInfo(getLanguageIndex(), modeInfo.tokenType);
+    return initialMultiLineTokenInfo == null ? null : initialMultiLineTokenInfo.tokenStart;
+  }
+
+  private ModeInfo getModeInfo(int initialTokenType) {
+    ModeInfo modeInfo;
+    if (initialTokenType < 0) {
+      // extract modes
+      modeInfo = tokenToModeInfo.get(initialTokenType);
+    } else {
+      modeInfo = new ModeInfo(initialTokenType, Lexer.DEFAULT_MODE, new IntegerStack());
+    }
+    return modeInfo;
+  }
+
+  private String getMultilineTokenEnd(String line) {
+    String multilineTokenEnd = null;
+    for (MultiLineTokenInfo info : multiLineTokenInfos) {
+      if (info.languageIndex == getLanguageIndex()) {
+        // the language index matches our current language
+        int tokenStartPos = line.indexOf(info.tokenStart);
+        if (tokenStartPos > -1
+            && line.indexOf(info.tokenEnd, tokenStartPos + info.tokenStart.length()) == -1) {
+          // we are in the middle of a multi line token, we need to end it so the lexer can
+          // recognize it
+          multilineTokenEnd = info.tokenEnd;
+          break;
+        }
+      }
+    }
+    return multilineTokenEnd;
   }
 
   private int storeModeInfo(int currentType, int currentMode, IntegerStack modeStack) {
