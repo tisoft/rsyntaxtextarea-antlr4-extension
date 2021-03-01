@@ -21,17 +21,10 @@
 package de.tisoft.rsyntaxtextarea.modes.antlr;
 
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.List;
 import javax.swing.text.Segment;
-import org.antlr.v4.runtime.ANTLRErrorListener;
 import org.antlr.v4.runtime.CommonToken;
 import org.antlr.v4.runtime.Lexer;
-import org.antlr.v4.runtime.Parser;
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.Recognizer;
-import org.antlr.v4.runtime.atn.ATNConfigSet;
-import org.antlr.v4.runtime.dfa.DFA;
 import org.fife.ui.rsyntaxtextarea.Token;
 import org.fife.ui.rsyntaxtextarea.TokenMakerBase;
 
@@ -115,7 +108,7 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
           currentDocumentOffset = currentToken.getEndOffset();
         }
       }
-    } catch (AntlrException exceptionInstanceNotNeeded) {
+    } catch (AlwaysThrowingErrorListener.AntlrException exceptionInstanceNotNeeded) {
       // mark the rest of the line as error
       final String remainingText =
           String.valueOf(
@@ -238,54 +231,4 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
       this.tokenEnd = tokenEnd;
     }
   }
-
-  /** A {@link ANTLRErrorListener} that throws a RuntimeException for every error */
-  private static class AlwaysThrowingErrorListener implements ANTLRErrorListener {
-    @Override
-    public void syntaxError(
-        Recognizer<?, ?> recognizer,
-        Object offendingSymbol,
-        int line,
-        int charPositionInLine,
-        String msg,
-        RecognitionException e) {
-      throw new AntlrException();
-    }
-
-    @Override
-    public void reportAmbiguity(
-        Parser recognizer,
-        DFA dfa,
-        int startIndex,
-        int stopIndex,
-        boolean exact,
-        BitSet ambigAlts,
-        ATNConfigSet configs) {
-      throw new AntlrException();
-    }
-
-    @Override
-    public void reportAttemptingFullContext(
-        Parser recognizer,
-        DFA dfa,
-        int startIndex,
-        int stopIndex,
-        BitSet conflictingAlts,
-        ATNConfigSet configs) {
-      throw new AntlrException();
-    }
-
-    @Override
-    public void reportContextSensitivity(
-        Parser recognizer,
-        DFA dfa,
-        int startIndex,
-        int stopIndex,
-        int prediction,
-        ATNConfigSet configs) {
-      throw new AntlrException();
-    }
-  }
-
-  private static class AntlrException extends RuntimeException {}
 }
