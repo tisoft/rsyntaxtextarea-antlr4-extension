@@ -24,13 +24,12 @@ import de.tisoft.rsyntaxtextarea.modes.antlr.AntlrTokenMaker;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.Lexer;
 import org.fife.ui.rsyntaxtextarea.Token;
-import third_party.AssemblerLexer;
-import third_party.AssemblerParser;
+import third_party.asm6502Lexer;
 
 public class AssemblerTokenMaker extends AntlrTokenMaker {
   @Override
   protected Lexer createLexer(String text) {
-    return new AssemblerLexer(CharStreams.fromString(text)) {
+    return new asm6502Lexer(CharStreams.fromString(text)) {
       @Override
       public void skip() {
         setChannel(HIDDEN);
@@ -41,26 +40,14 @@ public class AssemblerTokenMaker extends AntlrTokenMaker {
   @Override
   protected int convertType(int type) {
     switch (type) {
-      case AssemblerParser.OPCODE:
-        return Token.OPERATOR;
-      case AssemblerParser.COMMENT:
+      case asm6502Lexer.COMMENT:
         return Token.COMMENT_EOL;
-      case AssemblerParser.INT:
+      case asm6502Lexer.NUMBER:
         return Token.LITERAL_NUMBER_DECIMAL_INT;
-      case AssemblerParser.HEX:
-        return Token.LITERAL_NUMBER_HEXADECIMAL;
-      case AssemblerParser.OCT:
-        return Token.LITERAL_NUMBER_FLOAT;
-      case AssemblerParser.BIN:
-        return Token.LITERAL_BOOLEAN;
-      case AssemblerParser.STRING:
+      case asm6502Lexer.STRING:
         return Token.LITERAL_STRING_DOUBLE_QUOTE;
-      case AssemblerParser.CHAR:
-        return Token.LITERAL_CHAR;
-      case AssemblerParser.DIRECTIVE:
+      case asm6502Lexer.ASSEMBLER_INSTRUCTION:
         return Token.RESERVED_WORD;
-      case AssemblerParser.ID:
-        return Token.VARIABLE;
     }
     return Token.IDENTIFIER;
   }

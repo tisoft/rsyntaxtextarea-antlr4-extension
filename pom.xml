@@ -220,8 +220,58 @@
               <goal>antlr4</goal>
             </goals>
             <configuration>
+              <generateTestSources>true</generateTestSources>
               <sourceDirectory>${basedir}/src/test/antlr4</sourceDirectory>
               <outputDirectory>${project.build.directory}/generated-test-sources/antlr4</outputDirectory>
+            </configuration>
+          </execution>
+          <execution>
+            <id>antlr-test-thirdparty</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>antlr4</goal>
+            </goals>
+            <configuration>
+              <sourceDirectory>${basedir}/third_party/antlr_grammars_v4</sourceDirectory>
+              <outputDirectory>${project.build.directory}/generated-test-sources/antlr4/third_party</outputDirectory>
+              <arguments>
+                <argument>-package</argument>
+                <argument>third_party</argument>
+                <argument>-Xexact-output-dir</argument>
+              </arguments>
+              <includes>
+                <include>asm/asm6502/asm6502.g4</include>
+                <include>c/C.g4</include>
+                <include>erlang/Erlang.g4</include>
+                <include>golang/Go*.g4</include>
+                <include>java/java9/Java9.g4</include>
+                <include>json/JSON.g4</include>
+                <include>python/python3/Python3.g4</include>
+                <include>sql/mysql/Positive-Technologies/MySql*.g4</include>
+                <include>xml/XML*.g4</include>
+              </includes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>3.0.0</version>
+        <executions>
+          <execution>
+            <id>copy-go-parser-base</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <concat destfile="${project.build.directory}/generated-test-sources/antlr4/third_party/GoParserBase.java">package third_party;</concat>
+                <concat append="true" destfile="${project.build.directory}/generated-test-sources/antlr4/third_party/GoParserBase.java">
+                  <fileset dir="${basedir}/third_party/antlr_grammars_v4/golang/Java/" includes="*" />
+                </concat>
+              </target>
             </configuration>
           </execution>
         </executions>
@@ -231,18 +281,6 @@
         <artifactId>build-helper-maven-plugin</artifactId>
         <version>3.2.0</version>
         <executions>
-          <execution>
-            <id>add-test-sources</id>
-            <phase>generate-test-sources</phase>
-            <goals>
-              <goal>add-test-source</goal>
-            </goals>
-            <configuration>
-              <sources>
-                <source>${project.build.directory}/generated-test-sources/antlr4</source>
-              </sources>
-            </configuration>
-          </execution>
           <execution>
             <id>add-demo-source</id>
             <phase>generate-test-sources</phase>

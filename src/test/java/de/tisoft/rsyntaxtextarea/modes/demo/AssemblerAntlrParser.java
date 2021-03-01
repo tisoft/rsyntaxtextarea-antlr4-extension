@@ -23,22 +23,22 @@ package de.tisoft.rsyntaxtextarea.modes.demo;
 import de.tisoft.rsyntaxtextarea.parser.antlr.AntlrParserBase;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.TokenStream;
-import third_party.AssemblerLexer;
-import third_party.AssemblerParser;
+import third_party.asm6502Lexer;
+import third_party.asm6502Parser;
 
-public class AssemblerAntlrParser extends AntlrParserBase<AssemblerLexer, AssemblerParser> {
+public class AssemblerAntlrParser extends AntlrParserBase<asm6502Lexer, asm6502Parser> {
   @Override
-  protected AssemblerLexer createLexer(CharStream input) {
-    return new AssemblerLexer(input);
+  protected asm6502Lexer createLexer(CharStream input) {
+    return new asm6502Lexer(input);
   }
 
   @Override
-  protected AssemblerParser createParser(TokenStream input) {
-    return new AssemblerParser(input);
+  protected asm6502Parser createParser(TokenStream input) {
+    return new asm6502Parser(input);
   }
 
   @Override
-  protected void parse(AssemblerParser parser) {
+  protected void parse(asm6502Parser parser) {
     parser.prog();
   }
 }
