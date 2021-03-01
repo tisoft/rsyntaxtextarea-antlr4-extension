@@ -22,15 +22,51 @@ package de.tisoft.rsyntaxtextarea.modes.antlr;
 
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import javax.swing.text.Segment;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.atn.ATNConfigSet;
 import org.antlr.v4.runtime.dfa.DFA;
+import org.antlr.v4.runtime.misc.IntegerStack;
 import org.fife.ui.rsyntaxtextarea.Token;
 import org.fife.ui.rsyntaxtextarea.TokenMakerBase;
 
 public abstract class AntlrTokenMaker extends TokenMakerBase {
+
+  private int nextModeInternalToken = -1;
+
+  private final Map<Integer, ModeInfo> tokenToModeInfo = new HashMap<>();
+  private final Map<ModeInfo, Integer> modeInfoToToken = new HashMap<>();
+
+  private static final class ModeInfo {
+    private final int tokenType;
+    private final int currentMode;
+    private final IntegerStack modeStack;
+
+    private ModeInfo(int tokenType, int currentMode, IntegerStack modeStack) {
+      this.tokenType = tokenType;
+      this.currentMode = currentMode;
+      this.modeStack = modeStack;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      ModeInfo modeInfo = (ModeInfo) o;
+      return tokenType == modeInfo.tokenType
+          && currentMode == modeInfo.currentMode
+          && modeStack.equals(modeInfo.modeStack);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(tokenType, currentMode, modeStack);
+    }
+  }
 
   private final List<MultiLineTokenInfo> multiLineTokenInfos;
 
@@ -44,6 +80,8 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
     if (type == CommonToken.INVALID_TYPE) {
       // mark as error
       return Token.ERROR_IDENTIFIER;
+    } else if (type < 0) {
+      return tokenToModeInfo.get(type).tokenType;
     } else {
       return convertType(type);
     }
@@ -54,6 +92,19 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
   public Token getTokenList(Segment text, int initialTokenType, int startOffset) {
     String line = text.toString();
     resetTokenList();
+
+    // the modes to push
+    ModeInfo modeInfo;
+    if (initialTokenType < 0) {
+      // extract modes
+      modeInfo = tokenToModeInfo.get(initialTokenType);
+      initialTokenType = modeInfo.tokenType;
+      // we need to set it, so that the correct multiline token can be found
+      setLanguageIndex(modeInfo.modeStack.peek());
+    } else {
+      modeInfo = new ModeInfo(initialTokenType, Lexer.DEFAULT_MODE, new IntegerStack());
+    }
+
     MultiLineTokenInfo initialMultiLineTokenInfo =
         getMultiLineTokenInfo(getLanguageIndex(), initialTokenType);
     String multilineTokenStart =
@@ -61,7 +112,6 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
     if (initialMultiLineTokenInfo != null) {
       // we are inside a multi line token, so prefix the text with the token start
       line = multilineTokenStart + line;
-      setLanguageIndex(initialMultiLineTokenInfo.languageIndex);
     }
 
     // check if we have a multi line token start without an end
@@ -82,9 +132,11 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
     }
 
     Lexer lexer = createLexer(line);
-    if (getLanguageIndex() != 0) {
-      lexer.pushMode(getLanguageIndex());
+    for (int mode : modeInfo.modeStack.toArray()) {
+      // push the modes into the lexer, so it knows where it is
+      lexer.pushMode(mode);
     }
+    lexer.mode(modeInfo.currentMode);
     lexer.removeErrorListeners();
     lexer.addErrorListener(new AlwaysThrowingErrorListener());
 
@@ -160,7 +212,28 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
       firstToken.text = new char[0];
       firstToken.textCount = 0;
     }
+
+    if (!lexer._modeStack.isEmpty() || lexer._mode != Lexer.DEFAULT_MODE) {
+      currentToken.setType(storeModeInfo(currentToken.getType(), lexer._mode, lexer._modeStack));
+    }
+
     return firstToken;
+  }
+
+  private int storeModeInfo(int currentType, int currentMode, IntegerStack modeStack) {
+    ModeInfo modeInfo = new ModeInfo(currentType, currentMode, new IntegerStack(modeStack));
+    Integer token = modeInfoToToken.get(modeInfo);
+    if (token != null) {
+      return token;
+    } else {
+      if (nextModeInternalToken > 0) {
+        // overflow, we can't store anymore variations of ModeInfos
+        throw new ArrayIndexOutOfBoundsException(nextModeInternalToken);
+      }
+      tokenToModeInfo.put(nextModeInternalToken, modeInfo);
+      modeInfoToToken.put(modeInfo, nextModeInternalToken);
+      return nextModeInternalToken--;
+    }
   }
 
   private MultiLineTokenInfo getMultiLineTokenInfo(int languageIndex, int token) {
