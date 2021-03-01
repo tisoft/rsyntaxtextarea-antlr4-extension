@@ -77,11 +77,6 @@ public class XMLTokenMaker extends AntlrTokenMaker {
   }
 
   @Override
-  public boolean isMarkupLanguage() {
-    return true;
-  }
-
-  @Override
   public String[] getLineCommentStartAndEnd(int languageIndex) {
     return new String[] {"<!--", "-->"};
   }
