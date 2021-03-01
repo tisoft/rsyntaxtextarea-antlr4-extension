@@ -29,7 +29,7 @@ import third_party.XMLLexer;
 public class XMLTokenMaker extends AntlrFullTokenMaker {
 
   public XMLTokenMaker() {
-    super(new MultiLineTokenInfo(0, Token.MARKUP_COMMENT, "<!--", "-->"));
+    super();
   }
 
   @Override

@@ -20,26 +20,17 @@
 
 package de.tisoft.rsyntaxtextarea.modes.antlr;
 
-import java.util.Arrays;
-import java.util.BitSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import javax.swing.text.Segment;
-import org.antlr.v4.runtime.ANTLRErrorListener;
 import org.antlr.v4.runtime.CommonToken;
 import org.antlr.v4.runtime.Lexer;
-import org.antlr.v4.runtime.Parser;
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.Recognizer;
-import org.antlr.v4.runtime.atn.ATNConfigSet;
-import org.antlr.v4.runtime.dfa.DFA;
 import org.fife.ui.rsyntaxtextarea.Token;
 import org.fife.ui.rsyntaxtextarea.TokenMakerBase;
 
 public abstract class AntlrFullTokenMaker extends TokenMakerBase {
 
-  private LinkedHashMap<String, Token> lexerCache =
+  private final LinkedHashMap<String, Token> lexerCache =
       new LinkedHashMap<String, Token>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, Token> eldest) {
@@ -47,11 +38,8 @@ public abstract class AntlrFullTokenMaker extends TokenMakerBase {
         }
       };
 
-  private final List<MultiLineTokenInfo> multiLineTokenInfos;
-
-  protected AntlrFullTokenMaker(MultiLineTokenInfo... multiLineTokenInfos) {
+  protected AntlrFullTokenMaker() {
     super();
-    this.multiLineTokenInfos = Arrays.asList(multiLineTokenInfos);
   }
 
   @Override
@@ -86,7 +74,7 @@ public abstract class AntlrFullTokenMaker extends TokenMakerBase {
 
     Token t = cachedToken;
     do {
-      if (t.getEndOffset() > text.getBeginIndex() && t.getOffset() < text.getEndIndex()) {
+      if (t.getEndOffset() >= text.getBeginIndex() && t.getOffset() <= text.getEndIndex()) {
         // the token is within the segment
         int offset = t.getOffset();
         if (offset < text.getBeginIndex()) {
@@ -160,16 +148,15 @@ public abstract class AntlrFullTokenMaker extends TokenMakerBase {
         // mark the rest of the line as error
         final String remainingText =
             String.valueOf(
-                text.array, currentArrayOffset, text.offset - currentArrayOffset + text.count);
-        int type;
-
-        type = Token.ERROR_IDENTIFIER;
+                text.array,
+                currentArrayOffset,
+                text.array.length - currentArrayOffset + text.count);
 
         addToken(
             text,
             currentArrayOffset,
             currentArrayOffset + remainingText.length() - 1,
-            type,
+            Token.ERROR_IDENTIFIER,
             currentDocumentOffset);
       }
       if (firstToken == null) {
@@ -180,71 +167,4 @@ public abstract class AntlrFullTokenMaker extends TokenMakerBase {
       return firstToken;
     }
   }
-
-  protected static class MultiLineTokenInfo {
-    private final int languageIndex;
-
-    private final int token;
-
-    private final String tokenStart;
-
-    private final String tokenEnd;
-
-    public MultiLineTokenInfo(int languageIndex, int token, String tokenStart, String tokenEnd) {
-      this.languageIndex = languageIndex;
-      this.token = token;
-      this.tokenStart = tokenStart;
-      this.tokenEnd = tokenEnd;
-    }
-  }
-
-  /** A {@link ANTLRErrorListener} that throws a RuntimeException for every error */
-  private static class AlwaysThrowingErrorListener implements ANTLRErrorListener {
-    @Override
-    public void syntaxError(
-        Recognizer<?, ?> recognizer,
-        Object offendingSymbol,
-        int line,
-        int charPositionInLine,
-        String msg,
-        RecognitionException e) {
-      throw new AntlrException();
-    }
-
-    @Override
-    public void reportAmbiguity(
-        Parser recognizer,
-        DFA dfa,
-        int startIndex,
-        int stopIndex,
-        boolean exact,
-        BitSet ambigAlts,
-        ATNConfigSet configs) {
-      throw new AntlrException();
-    }
-
-    @Override
-    public void reportAttemptingFullContext(
-        Parser recognizer,
-        DFA dfa,
-        int startIndex,
-        int stopIndex,
-        BitSet conflictingAlts,
-        ATNConfigSet configs) {
-      throw new AntlrException();
-    }
-
-    @Override
-    public void reportContextSensitivity(
-        Parser recognizer,
-        DFA dfa,
-        int startIndex,
-        int stopIndex,
-        int prediction,
-        ATNConfigSet configs) {
-      throw new AntlrException();
-    }
-  }
-
-  private static class AntlrException extends RuntimeException {}
 }
