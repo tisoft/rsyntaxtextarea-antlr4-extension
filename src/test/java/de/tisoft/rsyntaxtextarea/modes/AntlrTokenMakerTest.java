@@ -23,6 +23,7 @@ package de.tisoft.rsyntaxtextarea.modes;
 import de.tisoft.rsyntaxtextarea.modes.antlr.AntlrTokenMaker;
 import de.tisoft.rsyntaxtextarea.modes.antlr.MultiLineTokenInfo;
 import de.tisoft.rsyntaxtextarea.modes.antlr.TestLexer;
+import de.tisoft.rsyntaxtextarea.modes.demo.XMLTokenMaker;
 import javax.swing.text.Segment;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.Lexer;
@@ -259,6 +260,89 @@ public class AntlrTokenMakerTest {
     t = t.getNextToken();
 
     Assertions.assertEquals(TokenTypes.NULL, t.getType());
+    t = t.getNextToken();
+    Assertions.assertNull(t);
+  }
+
+  @Test
+  public void testLexerModeHandling() {
+    Segment segment = createSegment("<xml name=\"test\"");
+    TokenMaker tm = new XMLTokenMaker();
+
+    Token t = tm.getTokenList(segment, TokenTypes.NULL, 0);
+    assertTokenText(segment, t);
+
+    Assertions.assertEquals(TokenTypes.MARKUP_TAG_DELIMITER, t.getType());
+    Assertions.assertEquals("<", t.getLexeme());
+    t = t.getNextToken();
+
+    Assertions.assertEquals(TokenTypes.MARKUP_TAG_NAME, t.getType());
+    Assertions.assertEquals("xml", t.getLexeme());
+    t = t.getNextToken();
+
+    Assertions.assertEquals(TokenTypes.WHITESPACE, t.getType());
+    Assertions.assertEquals(" ", t.getLexeme());
+    t = t.getNextToken();
+
+    Assertions.assertEquals(TokenTypes.MARKUP_TAG_NAME, t.getType());
+    Assertions.assertEquals("name", t.getLexeme());
+    t = t.getNextToken();
+
+    Assertions.assertEquals(TokenTypes.OPERATOR, t.getType());
+    Assertions.assertEquals("=", t.getLexeme());
+    t = t.getNextToken();
+
+    Assertions.assertEquals(TokenTypes.MARKUP_TAG_ATTRIBUTE_VALUE, t.getType());
+    Assertions.assertEquals("\"test\"", t.getLexeme());
+    t = t.getNextToken();
+
+    // internal token!
+    Assertions.assertEquals(-1, t.getType());
+    t = t.getNextToken();
+    Assertions.assertNull(t);
+
+    // parse next line, the tag is still open
+    segment = createSegment("name2=\"test\"");
+    t = tm.getTokenList(segment, -1, 0);
+
+    Assertions.assertEquals(TokenTypes.MARKUP_TAG_NAME, t.getType());
+    Assertions.assertEquals("name2", t.getLexeme());
+    t = t.getNextToken();
+
+    Assertions.assertEquals(TokenTypes.OPERATOR, t.getType());
+    Assertions.assertEquals("=", t.getLexeme());
+    t = t.getNextToken();
+
+    Assertions.assertEquals(TokenTypes.MARKUP_TAG_ATTRIBUTE_VALUE, t.getType());
+    Assertions.assertEquals("\"test\"", t.getLexeme());
+    t = t.getNextToken();
+
+    // same internal token!
+    Assertions.assertEquals(-1, t.getType());
+    t = t.getNextToken();
+    Assertions.assertNull(t);
+
+    // parse next line, the tag is still open
+    segment = createSegment("name3=\"test\">");
+    t = tm.getTokenList(segment, -1, 0);
+
+    Assertions.assertEquals(TokenTypes.MARKUP_TAG_NAME, t.getType());
+    Assertions.assertEquals("name3", t.getLexeme());
+    t = t.getNextToken();
+
+    Assertions.assertEquals(TokenTypes.OPERATOR, t.getType());
+    Assertions.assertEquals("=", t.getLexeme());
+    t = t.getNextToken();
+
+    Assertions.assertEquals(TokenTypes.MARKUP_TAG_ATTRIBUTE_VALUE, t.getType());
+    Assertions.assertEquals("\"test\"", t.getLexeme());
+    t = t.getNextToken();
+
+    Assertions.assertEquals(TokenTypes.MARKUP_TAG_DELIMITER, t.getType());
+    Assertions.assertEquals(">", t.getLexeme());
+    t = t.getNextToken();
+
+    Assertions.assertEquals(0, t.getType());
     t = t.getNextToken();
     Assertions.assertNull(t);
   }
