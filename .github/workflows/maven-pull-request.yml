@@ -17,3 +17,10 @@ jobs:
         java-version: 1.8
     - name: Build with Maven
       run: mvn --no-transfer-progress -B verify -Drevision=${GITHUB_REF##*/} --file pom.xml
+    - name: Test & publish code coverage
+      uses: paambaati/codeclimate-action@v2.7.5
+      env:
+        CC_TEST_REPORTER_ID: "0ae6ed6c800841ebe2c77dbe17f0dff679e51a80daf2b45f6afa40ed8dec60c7"
+        JACOCO_SOURCE_PATH: "${{github.workspace}}/src/main/java"
+      with:
+        coverageLocations: ${{github.workspace}}/target/site/jacoco/jacoco.xml:jacoco
