@@ -224,7 +224,6 @@ import org.fife.ui.rsyntaxtextarea.*;
 
 Letter							= ([A-Za-z])
 LetterOrUnderscore				= ({Letter}|"_")
-Underscores						= ([_]+)
 NonzeroDigit						= ([1-9])
 BinaryDigit						= ([0-1])
 Digit							= ("0"|{NonzeroDigit})
@@ -235,8 +234,8 @@ AnyCharacterButDoubleQuoteOrBackSlash	= ([^\\\"\n])
 EscapedSourceCharacter				= ("u"{HexDigit}{HexDigit}{HexDigit}{HexDigit})
 Escape							= ("\\"(([btnfr\"'\\])|([0123]{OctalDigit}?{OctalDigit}?)|({OctalDigit}{OctalDigit}?)|{EscapedSourceCharacter}))
 NonSeparator						= ([^\t\f\r\n\ \(\)\{\}\[\]\;\,\.\=\>\<\!\~\?\:\+\-\*\/\&\|\^\%\"\']|"#"|"\\")
-IdentifierStart					= ({LetterOrUnderscore}|"$")
-IdentifierPart						= ({IdentifierStart}|{Digit}|("\\"{EscapedSourceCharacter}))
+IdentifierStart                     = ([:jletter:])
+IdentifierPart						= ([:jletterdigit:]|("\\"{EscapedSourceCharacter}))
 
 LineTerminator				= (\n)
 WhiteSpace				= ([ \t\f])
@@ -371,16 +370,22 @@ URL						= (((https?|f(tp|ile))"://"|"www.")({URLCharacters}{URLEndCharacter})?)
 	/* Booleans. */
 	{BooleanLiteral}			{ addToken(Token.LITERAL_BOOLEAN); }
 
-	/* java.lang classes */
+	/* java.lang interfaces */
 	"Appendable" |
 	"AutoCloseable" |
 	"CharSequence" |
 	"Cloneable" |
 	"Comparable" |
 	"Iterable" |
+	"ProcessHandle" |
+	"ProcessHandle.Info" |
 	"Readable" |
 	"Runnable" |
+	"StackWalker.StackFrame" |
+	"System.Logger" |
 	"Thread.UncaughtExceptionHandler" |
+
+	/* java.lang classes */
 	"Boolean" |
 	"Byte" |
 	"Character" |
@@ -392,22 +397,29 @@ URL						= (((https?|f(tp|ile))"://"|"www.")({URLCharacters}{URLEndCharacter})?)
 	"Compiler" |
 	"Double" |
 	"Enum" |
+	"Enum.EnumDesc" |
 	"Float" |
 	"InheritableThreadLocal" |
 	"Integer" |
 	"Long" |
 	"Math" |
+	"Module" |
+	"ModuleLayer" |
+	"ModuleLayer.Controller" |
 	"Number" |
 	"Object" |
 	"Package" |
 	"Process" |
 	"ProcessBuilder" |
 	"ProcessBuilder.Redirect" |
+	"Record" |
 	"Runtime" |
 	"RuntimePermission" |
+	"Runtime.Version" |
 	"SecurityManager" |
 	"Short" |
 	"StackTraceElement" |
+	"StackWalker" |
 	"StrictMath" |
 	"String" |
 	"StringBuffer" |
@@ -471,6 +483,13 @@ URL						= (((https?|f(tp|ile))"://"|"www.")({URLCharacters}{URLEndCharacter})?)
 	"VerifyError" |
 	"VirtualMachineError" |
 
+    /* java.lang annotation interfaces */
+    "Deprecated" |
+    "FunctionalInterface" |
+    "Override" |
+    "SafeVarargs" |
+    "SuppressWarnings" |
+
 	/* java.io classes*/
     "Closeable" |
     "DataInput" |
@@ -480,6 +499,8 @@ URL						= (((https?|f(tp|ile))"://"|"www.")({URLCharacters}{URLEndCharacter})?)
     "FilenameFilter" |
     "Flushable" |
     "ObjectInput" |
+    "ObjectInputFilter" |
+    "ObjectInputFilter.FilterInfo" |
     "ObjectInputValidation" |
     "ObjectOutput" |
     "ObjectStreamConstants" |
@@ -556,6 +577,9 @@ URL						= (((https?|f(tp|ile))"://"|"www.")({URLCharacters}{URLEndCharacter})?)
     "WriteAbortedException" |
 
     "IOError" |
+
+    /* java.io annotation interfaces */
+    "Serial" |
 
 	/* java.util classes */
     "Collection" |
