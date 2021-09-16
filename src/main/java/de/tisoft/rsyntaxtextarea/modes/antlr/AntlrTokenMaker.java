@@ -33,14 +33,15 @@
 
 package de.tisoft.rsyntaxtextarea.modes.antlr;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import javax.swing.text.Segment;
 import org.antlr.v4.runtime.CommonToken;
 import org.antlr.v4.runtime.Lexer;
 import org.fife.ui.rsyntaxtextarea.Token;
 import org.fife.ui.rsyntaxtextarea.TokenMakerBase;
+
+import javax.swing.text.Segment;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 
 public abstract class AntlrTokenMaker extends TokenMakerBase {
 
@@ -203,8 +204,8 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
   private String getMultilineTokenEnd(Token token) {
     for (MultiLineTokenInfo mti : multiLineTokenInfos) {
       if (mti.token == token.getType()) {
-        if (token.getLexeme().equals(mti.tokenEnd) || !token.endsWith(mti.tokenEnd.toCharArray()))
-          return mti.tokenEnd;
+          if (token.getLexeme().equals(mti.tokenStart) || !token.endsWith(mti.tokenEnd.toCharArray()))
+              return mti.tokenEnd;
       }
     }
     return null;
