@@ -83,10 +83,8 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
     }
 
     // check if we have a multi line token start without an end
-    String multilineTokenEnd = getMultilineTokenEnd(line);
-    if (multilineTokenEnd != null) {
-      line += multilineTokenEnd;
-    }
+    String multilineTokenEnd = null;
+
 
     Lexer lexer = createLexer(line);
     for (int mode : modeInfo.modeStack.toArray()) {
@@ -102,25 +100,27 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
 
     try {
       while (true) {
-        org.antlr.v4.runtime.Token at = lexer.nextToken();
-        setLanguageIndex(lexer._mode);
-        if (at.getType() == CommonToken.EOF) {
-          if (multilineTokenEnd == null) {
-            addNullToken();
+          org.antlr.v4.runtime.Token at = lexer.nextToken();
+          setLanguageIndex(lexer._mode);
+          if (at.getType() == CommonToken.EOF) {
+            if(currentToken!=null)
+              multilineTokenEnd=getMultilineTokenEnd(currentToken);
+            if (multilineTokenEnd == null) {
+              addNullToken();
+            }
+            break;
+          } else {
+            addToken(
+                    text,
+                    currentArrayOffset,
+                    currentDocumentOffset,
+                    multilineTokenStart,
+                    multilineTokenEnd,
+                    at);
+            // update from current token
+            currentArrayOffset = currentToken.textOffset + currentToken.textCount;
+            currentDocumentOffset = currentToken.getEndOffset();
           }
-          break;
-        } else {
-          addToken(
-              text,
-              currentArrayOffset,
-              currentDocumentOffset,
-              multilineTokenStart,
-              multilineTokenEnd,
-              at);
-          // update from current token
-          currentArrayOffset = currentToken.textOffset + currentToken.textCount;
-          currentDocumentOffset = currentToken.getEndOffset();
-        }
       }
     } catch (AlwaysThrowingErrorListener.AntlrException exceptionInstanceNotNeeded) {
       // mark the rest of the line as error
@@ -199,6 +199,15 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
     return getMultiLineTokenInfo(getLanguageIndex(), modeInfo.tokenType)
         .map(i -> i.tokenStart)
         .orElse(null);
+  }
+  private String getMultilineTokenEnd(Token token) {
+    for (MultiLineTokenInfo mti : multiLineTokenInfos) {
+      if (mti.token == token.getType()) {
+        if (token.getLexeme().equals(mti.tokenEnd) || !token.endsWith(mti.tokenEnd.toCharArray()))
+          return mti.tokenEnd;
+      }
+    }
+    return null;
   }
 
   private String getMultilineTokenEnd(String line) {
