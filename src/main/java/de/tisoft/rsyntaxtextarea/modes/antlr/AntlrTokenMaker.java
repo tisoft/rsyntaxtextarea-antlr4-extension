@@ -86,7 +86,6 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
     // check if we have a multi line token start without an end
     String multilineTokenEnd = null;
 
-
     Lexer lexer = createLexer(line);
     for (int mode : modeInfo.modeStack.toArray()) {
       // push the modes into the lexer, so it knows where it is
@@ -101,30 +100,26 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
 
     try {
       while (true) {
-        try {
-          org.antlr.v4.runtime.Token at = lexer.nextToken();
-          setLanguageIndex(lexer._mode);
-          if (at.getType() == CommonToken.EOF) {
-            if (currentToken != null)
-              multilineTokenEnd = getMultilineTokenEnd(currentToken, initialTokenType);
-            if (multilineTokenEnd == null) {
-              addNullToken();
-            }
-            break;
-          } else {
-            addToken(
-                    text,
-                    currentArrayOffset,
-                    currentDocumentOffset,
-                    multilineTokenStart,
-                    multilineTokenEnd,
-                    at);
-            // update from current token
-            currentArrayOffset = currentToken.textOffset + currentToken.textCount;
-            currentDocumentOffset = currentToken.getEndOffset();
+        org.antlr.v4.runtime.Token at = lexer.nextToken();
+        setLanguageIndex(lexer._mode);
+        if (at.getType() == CommonToken.EOF) {
+          if (currentToken != null)
+            multilineTokenEnd = getMultilineTokenEnd(currentToken, initialTokenType);
+          if (multilineTokenEnd == null) {
+            addNullToken();
           }
-        } catch (Exception e) {
-          e.printStackTrace();
+          break;
+        } else {
+          addToken(
+                  text,
+                  currentArrayOffset,
+                  currentDocumentOffset,
+                  multilineTokenStart,
+                  multilineTokenEnd,
+                  at);
+          // update from current token
+          currentArrayOffset = currentToken.textOffset + currentToken.textCount;
+          currentDocumentOffset = currentToken.getEndOffset();
         }
       }
     } catch (AlwaysThrowingErrorListener.AntlrException exceptionInstanceNotNeeded) {
@@ -189,7 +184,9 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
           int currentArrayOffset,
           org.antlr.v4.runtime.Token at) {
     int end = currentArrayOffset + at.getText().length() - 1;
-    if (multilineTokenStart != null && at.getText().startsWith(multilineTokenStart) && at.getCharPositionInLine() == 0) {
+    if (multilineTokenStart != null
+            && at.getText().startsWith(multilineTokenStart)
+            && at.getCharPositionInLine() == 0) {
       // need to subtract our inserted token start
       end -= multilineTokenStart.length();
     }
@@ -209,31 +206,15 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
   private String getMultilineTokenEnd(Token token, int initialTypeToken) {
     for (MultiLineTokenInfo mti : multiLineTokenInfos) {
       if (mti.token == token.getType()) {
-        if (!token.endsWith(mti.tokenEnd.toCharArray()))
-          return mti.tokenEnd;
+        if (!token.endsWith(mti.tokenEnd.toCharArray())) return mti.tokenEnd;
         if (mti.tokenStart.contentEquals(mti.tokenEnd)) {
           if (token.getOffset() == 0 && initialTypeToken == mti.token) {
             return null;
-          } else if (token.getLexeme().equals(mti.tokenEnd))
-            return mti.tokenEnd;
+          } else if (token.getLexeme().equals(mti.tokenEnd)) return mti.tokenEnd;
         }
       }
     }
     return null;
-  }
-
-  private String getMultilineTokenEnd(String line) {
-    return multiLineTokenInfos.stream()
-            // the language index matches our current language
-            .filter(i -> i.languageIndex == getLanguageIndex())
-            // the line contains the token start
-            .filter(i -> line.contains(i.tokenStart))
-            // the line doesn't contain the token end after the token start
-            .filter(
-                    i -> line.indexOf(i.tokenEnd, line.indexOf(i.tokenStart) + i.tokenStart.length()) == -1)
-            .map(i -> i.tokenEnd)
-            .findFirst()
-            .orElse(null);
   }
 
   private Optional<MultiLineTokenInfo> getMultiLineTokenInfo(int languageIndex, int token) {
