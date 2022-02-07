@@ -40,12 +40,12 @@ DIV : '/';
 // note, that the start of the COMMENT_DOC token is a valid combination of 2 other token types
 // also a COMMENT_DOC would also be a valid COMMENT, so it needs to be before it
 COMMENT_DOC
-    :   '/**' .*? '*/' -> channel(HIDDEN)
+    :   '/**' .*? ('*/'|EOF) -> channel(HIDDEN)
     ;
 
 // note, that the start of the COMMENT token is a valid combination of 2 other token types
 COMMENT
-    :   '/*' .*? '*/' -> channel(HIDDEN)
+    :   '/*' .*? ('*/'|EOF) -> channel(HIDDEN)
     ;
 
 
@@ -61,13 +61,13 @@ STRING_LITERAL
 /// shortstringitem ::=  shortstringchar | stringescapeseq
 /// shortstringchar ::=  <any source character except "\" or newline or the quote>
 fragment SHORT_STRING
- : '\'' ( STRING_ESCAPE_SEQ | ~[\\\r\n\f'] )* '\''
- | '"' ( STRING_ESCAPE_SEQ | ~[\\\r\n\f"] )* '"'
+ : '\'' ( STRING_ESCAPE_SEQ | ~[\\\r\n\f'] )* ('\''|EOF)
+ | '"' ( STRING_ESCAPE_SEQ | ~[\\\r\n\f"] )* ('"'|EOF)
  ;
 /// longstring      ::=  "'''" longstringitem* "'''" | '"""' longstringitem* '"""'
 fragment LONG_STRING
- : '\'\'\'' LONG_STRING_ITEM*? '\'\'\''
- | '"""' LONG_STRING_ITEM*? '"""'
+ : '\'\'\'' LONG_STRING_ITEM*? ('\'\'\''|EOF)
+ | '"""' LONG_STRING_ITEM*? ('"""'|EOF)
  ;
 
 /// longstringitem  ::=  longstringchar | stringescapeseq

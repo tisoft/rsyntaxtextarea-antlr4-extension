@@ -33,14 +33,15 @@
 
 package de.tisoft.rsyntaxtextarea.modes.antlr;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import javax.swing.text.Segment;
 import org.antlr.v4.runtime.CommonToken;
 import org.antlr.v4.runtime.Lexer;
 import org.fife.ui.rsyntaxtextarea.Token;
 import org.fife.ui.rsyntaxtextarea.TokenMakerBase;
+
+import javax.swing.text.Segment;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 
 public abstract class AntlrTokenMaker extends TokenMakerBase {
 
@@ -83,10 +84,7 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
     }
 
     // check if we have a multi line token start without an end
-    String multilineTokenEnd = getMultilineTokenEnd(line);
-    if (multilineTokenEnd != null) {
-      line += multilineTokenEnd;
-    }
+    String multilineTokenEnd = null;
 
     Lexer lexer = createLexer(line);
     for (int mode : modeInfo.modeStack.toArray()) {
@@ -105,18 +103,18 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
         org.antlr.v4.runtime.Token at = lexer.nextToken();
         setLanguageIndex(lexer._mode);
         if (at.getType() == CommonToken.EOF) {
-          if (multilineTokenEnd == null) {
+          if (currentToken != null && isUnfinishedMultilineToken(currentToken, initialTokenType)) {
             addNullToken();
           }
           break;
         } else {
           addToken(
-              text,
-              currentArrayOffset,
-              currentDocumentOffset,
-              multilineTokenStart,
-              multilineTokenEnd,
-              at);
+                  text,
+                  currentArrayOffset,
+                  currentDocumentOffset,
+                  multilineTokenStart,
+                  multilineTokenEnd,
+                  at);
           // update from current token
           currentArrayOffset = currentToken.textOffset + currentToken.textCount;
           currentDocumentOffset = currentToken.getEndOffset();
@@ -131,11 +129,11 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
       int type = multilineTokenStart != null ? modeInfo.tokenType : Token.ERROR_IDENTIFIER;
 
       addToken(
-          text,
-          currentArrayOffset,
-          currentArrayOffset + remainingText.length() - 1,
-          type,
-          currentDocumentOffset);
+              text,
+              currentArrayOffset,
+              currentArrayOffset + remainingText.length() - 1,
+              type,
+              currentDocumentOffset);
 
       if (multilineTokenStart == null) {
         // we are not in a multiline token, so we assume the line ends here
@@ -157,34 +155,36 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
 
     if (!lexer._modeStack.isEmpty() || lexer._mode != Lexer.DEFAULT_MODE) {
       currentToken.setType(
-          modeInfoManager.storeModeInfo(currentToken.getType(), lexer._mode, lexer._modeStack));
+              modeInfoManager.storeModeInfo(currentToken.getType(), lexer._mode, lexer._modeStack));
     }
 
     return firstToken;
   }
 
   private void addToken(
-      Segment text,
-      int start,
-      int startOffset,
-      String multilineTokenStart,
-      String multilineTokenEnd,
-      org.antlr.v4.runtime.Token at) {
+          Segment text,
+          int start,
+          int startOffset,
+          String multilineTokenStart,
+          String multilineTokenEnd,
+          org.antlr.v4.runtime.Token at) {
     addToken(
-        text,
-        start,
-        calculateTokenEnd(multilineTokenStart, multilineTokenEnd, start, at),
-        getClosestStandardTokenTypeForInternalType(at.getType()),
-        startOffset);
+            text,
+            start,
+            calculateTokenEnd(multilineTokenStart, multilineTokenEnd, start, at),
+            getClosestStandardTokenTypeForInternalType(at.getType()),
+            startOffset);
   }
 
   private int calculateTokenEnd(
-      String multilineTokenStart,
-      String multilineTokenEnd,
-      int currentArrayOffset,
-      org.antlr.v4.runtime.Token at) {
+          String multilineTokenStart,
+          String multilineTokenEnd,
+          int currentArrayOffset,
+          org.antlr.v4.runtime.Token at) {
     int end = currentArrayOffset + at.getText().length() - 1;
-    if (multilineTokenStart != null && at.getText().startsWith(multilineTokenStart)) {
+    if (multilineTokenStart != null
+            && at.getText().startsWith(multilineTokenStart)
+            && at.getCharPositionInLine() == 0) {
       // need to subtract our inserted token start
       end -= multilineTokenStart.length();
     }
@@ -197,29 +197,34 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
 
   private String getMultilineTokenStart(ModeInfoManager.ModeInfo modeInfo) {
     return getMultiLineTokenInfo(getLanguageIndex(), modeInfo.tokenType)
-        .map(i -> i.tokenStart)
-        .orElse(null);
+            .map(i -> i.tokenStart)
+            .orElse(null);
   }
 
-  private String getMultilineTokenEnd(String line) {
-    return multiLineTokenInfos.stream()
-        // the language index matches our current language
-        .filter(i -> i.languageIndex == getLanguageIndex())
-        // the line contains the token start
-        .filter(i -> line.contains(i.tokenStart))
-        // the line doesn't contain the token end after the token start
-        .filter(
-            i -> line.indexOf(i.tokenEnd, line.indexOf(i.tokenStart) + i.tokenStart.length()) == -1)
-        .map(i -> i.tokenEnd)
-        .findFirst()
-        .orElse(null);
+  private boolean isUnfinishedMultilineToken(Token token, int initialTypeToken) {
+    for (MultiLineTokenInfo mti : multiLineTokenInfos) {
+      if (mti.token == token.getType()) {
+        return isUnfinishedMultilineToken(token, initialTypeToken, mti);
+      }
+    }
+    return false;
+  }
+
+  private boolean isUnfinishedMultilineToken(Token token, int initialTypeToken, MultiLineTokenInfo mti) {
+    if (!token.endsWith(mti.tokenEnd.toCharArray())) return true;
+    if (mti.tokenStart.contentEquals(mti.tokenEnd)) {
+      if (token.getOffset() == 0 && initialTypeToken == mti.token) {
+        return false;
+      } else return token.getLexeme().equals(mti.tokenEnd);
+    }
+    return false;
   }
 
   private Optional<MultiLineTokenInfo> getMultiLineTokenInfo(int languageIndex, int token) {
     return multiLineTokenInfos.stream()
-        .filter(i -> i.languageIndex == languageIndex)
-        .filter(i -> i.token == token)
-        .findFirst();
+            .filter(i -> i.languageIndex == languageIndex)
+            .filter(i -> i.token == token)
+            .findFirst();
   }
 
   protected abstract Lexer createLexer(String text);
