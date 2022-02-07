@@ -103,9 +103,7 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
         org.antlr.v4.runtime.Token at = lexer.nextToken();
         setLanguageIndex(lexer._mode);
         if (at.getType() == CommonToken.EOF) {
-          if (currentToken != null)
-            multilineTokenEnd = getMultilineTokenEnd(currentToken, initialTokenType);
-          if (multilineTokenEnd == null) {
+          if (currentToken != null && isUnfinishedMultilineToken(currentToken, initialTokenType)) {
             addNullToken();
           }
           break;
@@ -203,18 +201,23 @@ public abstract class AntlrTokenMaker extends TokenMakerBase {
             .orElse(null);
   }
 
-  private String getMultilineTokenEnd(Token token, int initialTypeToken) {
+  private boolean isUnfinishedMultilineToken(Token token, int initialTypeToken) {
     for (MultiLineTokenInfo mti : multiLineTokenInfos) {
       if (mti.token == token.getType()) {
-        if (!token.endsWith(mti.tokenEnd.toCharArray())) return mti.tokenEnd;
-        if (mti.tokenStart.contentEquals(mti.tokenEnd)) {
-          if (token.getOffset() == 0 && initialTypeToken == mti.token) {
-            return null;
-          } else if (token.getLexeme().equals(mti.tokenEnd)) return mti.tokenEnd;
-        }
+        return isUnfinishedMultilineToken(token, initialTypeToken, mti);
       }
     }
-    return null;
+    return false;
+  }
+
+  private boolean isUnfinishedMultilineToken(Token token, int initialTypeToken, MultiLineTokenInfo mti) {
+    if (!token.endsWith(mti.tokenEnd.toCharArray())) return true;
+    if (mti.tokenStart.contentEquals(mti.tokenEnd)) {
+      if (token.getOffset() == 0 && initialTypeToken == mti.token) {
+        return false;
+      } else return token.getLexeme().equals(mti.tokenEnd);
+    }
+    return false;
   }
 
   private Optional<MultiLineTokenInfo> getMultiLineTokenInfo(int languageIndex, int token) {
